@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from pydantic import ValidationError
 
 from .models import CheckoutRequest, Order, PaymentResult
 from .payments import charge
@@ -11,7 +12,10 @@ app = FastAPI(title="checkout-demo")
 def checkout(request: CheckoutRequest) -> Order:
     response = charge(request.amount, request.idempotency_key, request.provider_mode)
     # This deliberate baseline defect is the incident ResolveLoop repairs.
-    result = PaymentResult.model_validate(response)
+    try:
+        result = PaymentResult.model_validate(response)
+    except ValidationError:
+        return create_order(request.order_id, "failed")
     if result.status != "approved":
         return create_order(request.order_id, "failed")
     return create_order(request.order_id, "completed", result.charge_id)
