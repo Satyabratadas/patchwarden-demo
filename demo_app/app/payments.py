@@ -14,7 +14,10 @@ def charge(amount: int, idempotency_key: str, mode: str) -> PaymentResult | dict
         return {"unexpected": "gateway payload"}
     if mode != "normal":
         raise ValueError("unsupported provider mode")
-    _charges[idempotency_key] = _charges.get(idempotency_key, 0) + 1
+    if idempotency_key in _charges:
+        # Already charged for this idempotency key; return same result without incrementing.
+        return PaymentResult(status="approved", charge_id=f"ch_{idempotency_key}")
+    _charges[idempotency_key] = 1
     return PaymentResult(status="approved", charge_id=f"ch_{idempotency_key}")
 
 
