@@ -14,6 +14,8 @@ def checkout(request: CheckoutRequest) -> Order:
     result = PaymentResult.model_validate(response)
     if result.status == "declined":
         return create_order(request.order_id, "failed")
+    if result.status == "review":
+        return create_order(request.order_id, "review")
     return create_order(request.order_id, "completed", result.charge_id)
 
 
