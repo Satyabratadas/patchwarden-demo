@@ -9,7 +9,11 @@ app = FastAPI(title="checkout-demo")
 
 @app.post("/checkout", response_model=Order)
 def checkout(request: CheckoutRequest) -> Order:
-    reserve_item(request.sku)
+    try:
+        reserve_item(request.sku)
+    except KeyError:
+        # unknown SKU -> fail order without charging
+        return create_order(request.order_id, "failed")
     response = charge(request.amount, request.idempotency_key, request.provider_mode)
     result = PaymentResult.model_validate(response)
     if result.status == "declined":
