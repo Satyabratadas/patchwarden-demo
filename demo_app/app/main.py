@@ -3,6 +3,7 @@ from fastapi import FastAPI, HTTPException
 from .models import CheckoutRequest, Order, PaymentResult
 from .payments import charge
 from .store import create_order, get_order, reserve_item
+from pydantic import ValidationError
 
 app = FastAPI(title="checkout-demo")
 
@@ -11,7 +12,10 @@ app = FastAPI(title="checkout-demo")
 def checkout(request: CheckoutRequest) -> Order:
     reserve_item(request.sku)
     response = charge(request.amount, request.idempotency_key, request.provider_mode)
-    result = PaymentResult.model_validate(response)
+    try:
+        result = PaymentResult.model_validate(response)
+    except ValidationError:
+        return create_order(request.order_id, "failed")
     if result.status == "declined":
         return create_order(request.order_id, "failed")
     return create_order(request.order_id, "completed", result.charge_id)
